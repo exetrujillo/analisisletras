@@ -67,31 +67,14 @@ Aquí importamos la base de datos, sus tablas y el tipo de información que pued
 
 ```{r}
 
-# Función para conectar a la base de datos
-conectar_bd <- function(db_path = "db.sqlite3") {
-  if (!file.exists(db_path)) {
-    stop("El archivo de la base de datos no existe.")
-  }
-  conn <- dbConnect(SQLite(), dbname = db_path)
-  # message("Conexión exitosa a la base de datos: ", db_path)
-  return(conn)
-}
-
-# Función para desconectar de la base de datos
-desconectar_bd <- function(conn) {
-  if (!inherits(conn, "DBIConnection")) {
-    stop("El objeto proporcionado no es una conexión válida.")
-  }
-  dbDisconnect(conn)
-  # message("Conexión cerrada correctamente.")
-}
-
 # Abrir conexión para hacer pruebas
-conn <- conectar_bd()
+conn <- analisisletras::conectar_bd()
+
 # Listar tablas
 #tables <- dbListTables(conn)
 #print(tables)
-desconectar_bd(conn)
+
+analisisletras::desconectar_bd(conn)
 ```
 
 El resultado son las siguientes tablas:
@@ -108,16 +91,16 @@ El resultado son las siguientes tablas:
 conn <- conectar_bd()
 
 # Leer los primeros registros de tracks
-dataTracks <- dbGetQuery(conn, "SELECT * FROM tracks LIMIT 10")
+dataTracks <- DBI::dbGetQuery(conn, "SELECT * FROM tracks LIMIT 10")
 
 # Consultar la estructura de tracks
-columnsTracks <- dbGetQuery(conn, "PRAGMA table_info(tracks)")
+columnsTracks <- DBI::dbGetQuery(conn, "PRAGMA table_info(tracks)")
 
 # Leer los primeros registros de lyrics
-dataLyrics <- dbGetQuery(conn, "SELECT * FROM lyrics LIMIT 10")
+dataLyrics <- DBI::dbGetQuery(conn, "SELECT * FROM lyrics LIMIT 10")
 
 # Consultar la estructura de lyrics
-columnsLyrics <- dbGetQuery(conn, "PRAGMA table_info(lyrics)")
+columnsLyrics <- DBI::dbGetQuery(conn, "PRAGMA table_info(lyrics)")
 
 # Desconectamos la base de datos
 desconectar_bd(conn)
@@ -158,9 +141,9 @@ Nos interesa particularmente la tabla tracks y la tabla lyrics, la tabla tracks_
 | `created_at` | DATE | Fecha y hora de creación del registro. | 2022-11-14 11:46:45.978+00:00 |
 | `updated_at` | DATE | Fecha y hora de la última actualización del registro. | 2022-11-14 11:46:45.978+00:00 |
 
-# Definición de funciones de extracción
+# Funciones de extracción
 
-Ya teniendo claridad de la estructura de las tablas que nos interesan, comenzaremos a crear las funciones que nos permitan crear nuestros propios data frames extrayendo las columnas que nos interesan.
+Ya teniendo claridad de la estructura de las tablas que nos interesan, comenzaremos a utilizar las funciones que nos permitan crear nuestros propios data frames, extrayendo las columnas que nos interesan.
 
 ## El ejemplo
 
@@ -173,20 +156,11 @@ Partiremos con una sola banda
 artista_ej <- "Niños del Cerro"
 ```
 
-## Normalizar nombre de artista
+## Normalizar nombre de artista o texto en general
 
 Normalizar los nombres de los artistas es estandarizar su "formato" para que sean uniformes, independientemente de cómo estén registrados en la base de datos o ingresados por el usuario. Esto es útil para evitar problemas como registros duplicados o consultas fallidas debido a diferencias en mayúsculas, espacios, acentos, o caracteres especiales, como la ñ en "Niños del Cerro".
 
 ```{r}
-
-# Función de normalización
-nrmlztxt <- function(texto) {
-  texto <- tolower(texto)                          # Minúsculas
-  texto <- stri_trans_general(texto, "Latin-ASCII") # Eliminar acentos y especiales
-  texto <- trimws(texto)                           # Eliminar espacios adicionales
-  return(texto)
-}
-
 artista_ej_nrm <- nrmlztxt(artista_ej)
 print(artista_ej_nrm)
 ```
@@ -196,35 +170,6 @@ Se ve que el resultado es "ninos del cerro", sin espacios, ni ñ, ni mayúsculas
 ## Obtener canciones de un artista con las letras
 
 ```{r}
-
-buscarPorArtista <- function(nombre_artista) {
-  nombre_artista_nrm <- nrmlztxt(nombre_artista)
-  # Conectamos a la base de datos
-  conexion <- conectar_bd()
-  
-  # Proteger el nombre para consultas SQL
-  nombre_artista_quoted <- dbQuoteString(conexion, nombre_artista_nrm)
-  
-  # Consulta SQL con LIKE (búsqueda flexible) y campo normalizado en la base de datos
-  query <- paste0("
-    SELECT 
-      t.id AS track_id, t.name, t.name_lower, t.artist_name, t.artist_name_lower, 
-      t.album_name, t.album_name_lower, t.duration, t.updated_at, 
-      l.id AS lyrics_id, l.plain_lyrics, l.synced_lyrics, l.has_plain_lyrics, 
-      l.has_synced_lyrics, l.instrumental
-    FROM tracks t
-    LEFT JOIN lyrics l ON t.last_lyrics_id = l.id
-    WHERE t.artist_name_lower LIKE ", nombre_artista_quoted
-  )
-  
-  # Ejecutar la consulta
-  data <- dbGetQuery(conexion, query)
-  
-  # Desconectamos la bd
-  desconectar_bd(conexion)
-  return(data)
-}
-
 # Ejemplo de uso de la función con nombre sin normalizar
 df_artista_ej <- buscarPorArtista(artista_ej)
 
@@ -234,7 +179,7 @@ df_artista_ej <- buscarPorArtista(artista_ej)
 
 Arroja 51 filas con 15 variables: **track_id** (\<int\>), **name** (\<chr\>), **name_lower** (\<chr\>), **artist_name** (\<chr\>), **artist_name_lower** (\<chr\>), **album_name** (\<chr\>), **album_name_lower** (\<chr\>), **duration** (\<dbl\>), **updated_at** (\<chr\>), **lyrics_id** (\<int\>), **plain_lyrics** (\<chr\>), **synced_lyrics** (\<chr\>), **has_plain_lyrics** (\<int\>), **has_synced_lyrics** (\<int\>) e **instrumental** (\<int\>).
 
-## Limpieza de duplicados
+## Limpieza de tablas
 
 Supongamos que tenemos un pequeño subconjunto de datos:
 
@@ -251,8 +196,8 @@ limpiarDuplicadosU <- function(data) {
   data <- data %>%
     arrange(
       name_lower,
-      desc(has_synced_lyrics),  # Priorizar sincronizadas
-      desc(has_plain_lyrics)    # Si no sincronizadas, preferir letras planas
+      dplyr::desc(has_synced_lyrics),  # Priorizar sincronizadas (las que son 1)
+      dplyr::desc(has_plain_lyrics)    # Si no sincronizadas, preferir planas
     )
   
   # Detectamos canciones duplicadas
@@ -272,7 +217,7 @@ limpiarDuplicadosU <- function(data) {
   return(data_unicos)
 }
 
-# Ejemplo
+# Con el ejemplo, esos duplicados se eliminan efectivamente
 df_artista_ej <- limpiarDuplicadosU(df_artista_ej)
 ```
 
