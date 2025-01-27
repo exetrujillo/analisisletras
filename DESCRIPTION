@@ -1,14 +1,14 @@
 Package: analisisletras
 Type: Package
-Title: Análisis de Letras de Canciones
+Title: Analisis de Letras de Canciones
 Version: 0.1.0
 Author: Exequiel Trujillo Escobar
 Maintainer: Exequiel Trujillo Escobar <exequiel.trujillo@ug.uchile.cl>
-Description: Este paquete permite realizar un análisis exhaustivo de letras de canciones, 
+Description: Este paquete permite realizar un analisis exhaustivo de letras de canciones, 
     utilizando bases de datos como LRCLIB. Ofrece herramientas para crear corpus 
-    textuales, analizar la frecuencia de palabras, medir complejidad textual, realizar 
-    análisis de sentimientos, explorar patrones gramaticales y generar visualizaciones. 
-    Incluye ejemplos de análisis centrados en el indie chileno como caso de estudio.
+    textuales, analizar la frecuencia de palabras, medir complejidad textual (ToDo), realizar 
+    analisis de sentimientos (Usando Colab), explorar patrones gramaticales y generar visualizaciones. 
+    Incluye ejemplos de analisis centrados en el indie chileno como caso de estudio.
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true

@@ -1,20 +1,20 @@
 #' Buscar canciones por nombre de artista
 #'
-#' Esta función permite buscar las canciones de un artista en la base de datos, realizando una búsqueda flexible sobre
-#' el nombre del artista, después de normalizarlo. Utiliza una consulta SQL con un `LIKE` para encontrar coincidencias en
+#' Esta funcion permite buscar las canciones de un artista en la base de datos, realizando una busqueda flexible sobre
+#' el nombre del artista, despues de normalizarlo. Utiliza una consulta SQL con un `LIKE` para encontrar coincidencias en
 #' el campo `artist_name_lower` de la base de datos.
 #'
 #' @param nombre_artista Un texto (de tipo `character`) con el nombre del artista a buscar.
-#' @return Un dataframe con los resultados de la consulta, que contiene información sobre las canciones y sus letras.
+#' @return Un dataframe con los resultados de la consulta, que contiene informacion sobre las canciones y sus letras.
 #'         El dataframe incluye los campos `track_id`, `name`, `name_lower`, `artist_name`, `artist_name_lower`,
 #'         `album_name`, `album_name_lower`, `duration`, `updated_at`, `lyrics_id`, `plain_lyrics`, `synced_lyrics`,
 #'         `has_plain_lyrics`, `has_synced_lyrics`, e `instrumental`.
 #' @export
 #'
 #' @examples
-#' resultados <- buscarPorArtista("Niños del Cerro")
+#' resultados <- buscar_por_artista("Las Olas (NoisPop))
 #' print(resultados)
-buscarPorArtista <- function(nombre_artista) {
+buscar_por_artista <- function(nombre_artista) {
   # Normalizar el nombre del artista
   nombre_artista_nrm <- nrmlztxt(nombre_artista)
 
@@ -22,9 +22,9 @@ buscarPorArtista <- function(nombre_artista) {
   conexion <- conectar_bd()
 
   # Proteger el nombre para consultas SQL
-  nombre_artista_quoted <- dbQuoteString(conexion, nombre_artista_nrm)
+  nombre_artista_quoted <- DBI::dbQuoteString(conexion, nombre_artista_nrm)
 
-  # Consulta SQL con LIKE (búsqueda flexible) y campo normalizado en la base de datos
+  # Consulta SQL con LIKE (busqueda flexible) y campo normalizado en la base de datos
   query <- paste0("
     SELECT
       t.id AS track_id, t.name, t.name_lower, t.artist_name, t.artist_name_lower,
@@ -37,7 +37,7 @@ buscarPorArtista <- function(nombre_artista) {
   )
 
   # Ejecutar la consulta
-  data <- dbGetQuery(conexion, query)
+  data <- DBI::dbGetQuery(conexion, query)
 
   # Desconectamos la base de datos
   desconectar_bd(conexion)

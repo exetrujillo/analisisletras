@@ -12,51 +12,21 @@ editor: visual
 
 # Introducción
 
-Este proyecto utiliza R para realizar análisis de letras de canciones. Se usará la database de \[LRCLIB\](<https://lrclib.net/db-dumps>) y a partir de ella se crearán data frames para cada caso de estudio.
+Este proyecto utiliza R para realizar análisis de letras de canciones en español. Se utiliza la database de \[LRCLIB\](<https://lrclib.net/db-dumps>) y a partir de ella se crean data frames para cada caso de estudio.
 
-A lo largo de todo el código se irá ejemplificando el desarrollo de una investigación sobre las letras de un conjunto de bandas. basado en algún grupo social, estilo, . El ejemplo será el ***indie chileno*** actual, por tanto se van a ejemplificar todas las funciones dentro de este contexto. Esto incluye creación de corpus de texto, análisis de frecuencia de palabras en ciertas bandas o en conjuntos de bandas, etc.
+A lo largo de todo el código se irá ejemplificando el desarrollo de una investigación sobre las letras de un conjunto de bandas, basado en algún criterio puesto por le investigadore, ya sea un grupo social, un estilo, bandas dentro de un espacio geográficom etc.
 
-En resumen se tiene que definir una lista de artistas para analizar múltiples bandas. Crear un corpus unificado que combine las letras de todas las bandas seleccionadas. Realizar análisis lingüísticos básicos (frecuencia de palabras, longitud promedio, etc.). Incluir ejemplos de visualizaciones para explorar patrones.
+El ejemplo para este caso será el ***indie chileno*** en el siglo XXI, por tanto se van a ejemplificar todas las funciones dentro de este contexto. Esto incluye creación de corpus de texto, análisis de frecuencia de palabras en ciertas bandas o en conjuntos de bandas, etc.
 
-#### Tareas por hacer (ToDo):
+En resumen, se crea un flujo de trabajo, partiendo por definir una lista de artistas, luego crear un corpus unificado que combine las letras de todas las bandas seleccionadas. Realizar análisis lingüísticos básicos (frecuencia de palabras, longitud promedio, etc.). Incluir ejemplos de visualizaciones para explorar patrones.
 
--   Análisis:
+```{r setup}
 
-    -   En el análisis de sentimientos
+# Eliminar el entorno
+# rm(list = ls())
 
-    -   Análisis de complejidad textual
-
-    -   Reconocimiento de patrones gramaticales
-
-    -   Visualización de tendencias
-
-    -   Análisis literario
-
-        -   Explorar la existencia de paquetes para estudios lingüísticos y literarios con reconocimiento de pátrones de lenguaje por gramática en español.
-
-## Instalación de librerías
-
-Primero, cargamos las librerías necesarias:
-
-```{r}
-
-library(pacman)
-
-p_load(httr,
-       jsonlite,
-       dplyr,
-       rvest,
-       DBI,
-       RSQLite,
-       stringi,
-       writexl,
-       readxl,
-       quanteda,
-       quanteda.textstats,
-       wordcloud
-       )
-
-rm(list = ls()) # Descomentar si necesitamos limpiar entorno
+# Setear el directorio de trabajo para la ejecucion de las funciones del paquete
+knitr::opts_knit$set(root.dir = normalizePath("../"))
 ```
 
 # Exploración de la base de datos
@@ -65,14 +35,14 @@ Aquí importamos la base de datos, sus tablas y el tipo de información que pued
 
 ## Importar base de datos
 
-```{r}
+```{r, include = FALSE}
 
-# Abrir conexión para hacer pruebas
+# Abrir conexion para hacer pruebas
 conn <- analisisletras::conectar_bd()
 
-# Listar tablas
-#tables <- dbListTables(conn)
-#print(tables)
+# Listar tablas (aparecen en la consola, pero no renderizadas)
+tables <- DBI::dbListTables(conn)
+print(tables)
 
 analisisletras::desconectar_bd(conn)
 ```
@@ -86,7 +56,7 @@ El resultado son las siguientes tablas:
 
 ## Exploramos las tablas
 
-```{r}
+```{r, include=FALSE}
 # Conectamos a la base de datos
 conn <- conectar_bd()
 
@@ -101,6 +71,12 @@ dataLyrics <- DBI::dbGetQuery(conn, "SELECT * FROM lyrics LIMIT 10")
 
 # Consultar la estructura de lyrics
 columnsLyrics <- DBI::dbGetQuery(conn, "PRAGMA table_info(lyrics)")
+
+# Leer los primeros registros de tracks_fts
+dataTracksFts <- DBI::dbGetQuery(conn, "SELECT * FROM tracks_fts LIMIT 10")
+
+# Consultar la estructura de tracks_fts
+columnsTracksFts <- DBI::dbGetQuery(conn, "PRAGMA table_info(tracks_fts)")
 
 # Desconectamos la base de datos
 desconectar_bd(conn)
@@ -153,28 +129,26 @@ Partiremos con una sola banda
 
 ```{r}
 
-artista_ej <- "Niños del Cerro"
+artista_ej <- "Las Olas (NoisPop)"
 ```
 
 ## Normalizar nombre de artista o texto en general
 
-Normalizar los nombres de los artistas es estandarizar su "formato" para que sean uniformes, independientemente de cómo estén registrados en la base de datos o ingresados por el usuario. Esto es útil para evitar problemas como registros duplicados o consultas fallidas debido a diferencias en mayúsculas, espacios, acentos, o caracteres especiales, como la ñ en "Niños del Cerro".
+Normalizar los nombres de los artistas es estandarizar su "formato" para que sean uniformes, independientemente de cómo estén registrados en la base de datos o ingresados por el usuario. Esto es útil para evitar problemas como registros duplicados o consultas fallidas debido a diferencias en mayúsculas, espacios, acentos, o caracteres especiales.
 
 ```{r}
-artista_ej_nrm <- nrmlztxt(artista_ej)
+artista_ej_nrm <- analisisletras::nrmlztxt(artista_ej)
 print(artista_ej_nrm)
 ```
-
-Se ve que el resultado es "ninos del cerro", sin espacios, ni ñ, ni mayúsculas.
 
 ## Obtener canciones de un artista con las letras
 
 ```{r}
 # Ejemplo de uso de la función con nombre sin normalizar
-df_artista_ej <- buscarPorArtista(artista_ej)
+df_artista_ej <- analisisletras::buscar_por_artista(artista_ej)
 
 # Mostrar las primeras filas del dataframe final
-# head(df_artista_ej)
+utils::head(df_artista_ej)
 ```
 
 Arroja 51 filas con 15 variables: **track_id** (\<int\>), **name** (\<chr\>), **name_lower** (\<chr\>), **artist_name** (\<chr\>), **artist_name_lower** (\<chr\>), **album_name** (\<chr\>), **album_name_lower** (\<chr\>), **duration** (\<dbl\>), **updated_at** (\<chr\>), **lyrics_id** (\<int\>), **plain_lyrics** (\<chr\>), **synced_lyrics** (\<chr\>), **has_plain_lyrics** (\<int\>), **has_synced_lyrics** (\<int\>) e **instrumental** (\<int\>).
@@ -190,49 +164,19 @@ Supongamos que tenemos un pequeño subconjunto de datos:
 | doce | asia menor | 1 | 2022-12-31 12:00:00 | 1 |
 
 ```{r}
-
-limpiarDuplicadosU <- function(data) {
-  # Ordenamos para establecer prioridades
-  data <- data %>%
-    arrange(
-      name_lower,
-      dplyr::desc(has_synced_lyrics),  # Priorizar sincronizadas (las que son 1)
-      dplyr::desc(has_plain_lyrics)    # Si no sincronizadas, preferir planas
-    )
-  
-  # Detectamos canciones duplicadas
-  data_unicos <- data %>%
-    group_by(name_lower) %>%
-    filter(
-      # Mantenemos la primera versión en orden de prioridad
-      row_number() == 1
-    ) %>%
-    ungroup()
-
-   # Validación final para asegurar que el resultado es un dataframe
-  if (!is.data.frame(data_unicos)) {
-    stop("Error: 'data_unicos' no es un dataframe.")
-  }
-  
-  return(data_unicos)
-}
-
 # Con el ejemplo, esos duplicados se eliminan efectivamente
-df_artista_ej <- limpiarDuplicadosU(df_artista_ej)
+df_artista_ej <- limpiar_duplicados(df_artista_ej)
 ```
-
-Funciona pero deja sin tratar algunos casos, como los (en vivo) o los que tienen ft. o feat. En este caso, la tabla disminuyó de 51 casos con 15 variables a 44 casos con 15 variables.
 
 # El indie chileno
 
-Ciertamente una banda no constituye un estilo artístico por completo. El indie de por sí es una categoría bastante amplia que refiere a artistas (solistas o bandas) que en general se encuentran por fuera del espacio de grandes discográficas y de estructuras comerciales importantes. Viene más de una producción independiente del arte, relativamente independiente al capital comparando con la música más comercial.
+Ciertamente una banda no constituye un estilo artístico por completo. El indie de por sí es una categoría bastante amplia que refiere a artistas (solistas o bandas) que en general se encuentran por fuera del espacio de grandes discográficas y de estructuras comerciales importantes e incluso abarcan varios géneros musicales, como el rock alternativo, el pop o el punk. Considerando esto, una característica particular es que viene más de una producción independiente del arte, relativamente independiente al capital comparando con la música más comercial.
 
-Lo amplio del indie también refiere a la diversidad de estilos que se entremezclan, desde el rock, el pop, el folk, música más electrónica, elementos de rap, etc. Con un sello bastante experimental en muchos casos, sonidos más difusos, cierto grado de sensación de letargo en algunas sonoridades extendidas en la escena.
+Como se comentaba anteriormente, lo amplio del indie también refiere a la diversidad de estilos que se entremezclan, desde el rock, el pop, el folk, música más electrónica, elementos de rap, etc. Con un sello bastante experimental en muchos casos, sonidos más difusos o cierto grado de sensación de letargo en algunas sonoridades extendidas en la escena.
 
 ### Definición de grupos artísticos
 
 ```{r}
-
 bandas_indie <- c(
   "Abelocaín",
   "Ablusion",
@@ -240,82 +184,54 @@ bandas_indie <- c(
   "Adolescentes sin Edad",
   "Aguanieve",
   "Akero",
-  "Alechito",
+  "Alex Anwandter",
+  "Alex & Daniel",
   "Amarga Marga",
-  "Animales Extintos",
   "Antonel",
-  "Anttonias",
   "Aquí Brillamos",
-  "Árbol Lunar",
   "Arranquemos del Invierno",
+  "Ases Falsos",
   "Asia menor",
-  "Asamblea Internacional del Fuego", #Poshardcore
-  "Bolpo",
-  "BorisKarloff",
-  "BuenaMemoria",
-  "Cabro",
   "Candelabro",
-  "cata teuber",
-  "Cazaladrillo",
-  "Chico Bestia",
-  "Chico Eléctrico",
   "Chini and the technicians",
   "Chini png",
   "Círculo Polar",
   "Ciudad Vapor",
-  "Clara Löffel",
   "Columpios al Suelo",
   "Confío en tus amigos",
-  "Cristóbal Gacitúa",
-  "Cuando el problema no existe",
-  "Cepa Funk",
-  "Daniela Gatica y el fruto del ruido",
   "De Perder sus Pétalos",
   "Del Otro Balcón",
   "Déjenme Dormir",
-  "Dolorio los Tunantes", # Le quité el &
-  "Dúo Dial",
+  "Dënver",
+  "Diego Lorenzini",
+  "Dolorio & los Tunantes",
   "El cómodo silencio de los que hablan poco",
-  "Emisario Greda",
-  "Es lo que Hay",
   "Etéreos",
-  "Fantasmático",
+  "Fakuta",
   "Fabiancito",
-  "Felert",
-  "Fin del Mundo", # Quitar, son argentinas
-  "Flores",
   "Floresalegría",
+  "Flores",
   "Fonosida",
-  "fosfenos",
-  "Francisca y los Exploradores", # Quitar, es argentino
+  "Fother Muckers",
   "Frucola Frappé",
-  "Funktasmas",
-  "Gangrena Surf",
-  "Girocompás",
+  "GEPE",
+  "Girafa",
   "Gomitas Ácidas",
   "Guillermo Paf",
   "Helices",
-  "Hemisferio Sur",
   "Hesse Kassel",
-  "iiii", # Sí, es el nombre de la banda
   "Imágenes Sepia",
   "Inundaremos",
-  "Josefina Espejo",
-  "Kirtongo",
+  "Javiera Mena",
+  "Karla Grunewaldt",
   "Laurela",
-  "Las Olas NoisPop",
-  "Lejania",
+  "Las Olas (NoisPop)",
   "Los animales también se suicidan",
-  "Los fugitivos gnomos",
-  "Los Martinez",
   "Los repuestos superpuestos",
   "Los Santos Dumont",
-  "Los Turis",
   "Los Valentina",
-  "Luces Cálidas",
   "Mantarraya",
-  "María Tyrana",
-  "Medio Hermano",
+  "Mitimitis",
   "MonoAzul",
   "Niña Tormenta",
   "Niño Cohete",
@@ -324,479 +240,276 @@ bandas_indie <- c(
   "Novio",
   "Odisea",
   "Oye Elizabeth",
-  "Palacio Verde",
   "Panico",
   "Paracaidistas",
   "Parálisis del Sueño",
   "Patio Solar",
   "Pau",
-  "Phuyu y la Fantasma",
+  "Pedropiedra",
+  "Planeta No",
+  "Planetario",
+  "Playa Gótica",
+  "Poder Fantasma",
+  "Prehistöricos",
+  "Protistas",
+  "Pulmón",
+  "Ratarro y los Roedores",
+  "Rosario Alfonso",
+  "Seba Alfaro",
+  "Simón Campusano",
+  "Siniestra Pandora",
+  "Silabario",
+  "Super Especial",
+  "Taller Dejao",
+  "Teleradio Donoso",
+  "Tunacola",
+  "Tus amigos nuevos",
+  "Yaima Cat"
+)
+```
+
+```{r}
+bandas_no_encontradas <- c(
+  ".gatofantasma",
+  "Alechito",
+  "Animales Extintos",
+  "Anttonias",
+  "Aramea",
+  "Árbol Lunar",
+  "Bolpo",
+  "BorisKarloff",
+  "Borrosos",
+  "BuenaMemoria",
+  "Cabro",
+  "cata teuber",
+  "Cazaladrillo",
+  "Chico Bestia",
+  "Chico Eléctrico",
+  "Clara Löffel",
+  "Conjunto Apropiaciones",
+  "Cristóbal Gacitúa",
+  "Daniela Gatica y el fruto del ruido",
+  "Doumu",
+  "Dúo Dial",
+  "Emisario Greda",
+  "Es lo que Hay",
+  "Espacio Volátil",
+  "Fantasmático",
+  "Felert",
+  "Fórmula Rosa",
+  "fosfenos",
+  "Girocompás",
+  "Hemisferio Sur",
+  "Incendio Intencional",
+  "iiii", # Sí, es el nombre de la banda
+  "Josefina Espejo",
+  "Kirtongo",
+  "Lejanía",
+  "Los fugitivos gnomos",
+  "Los Martinez",
+  "Los Turis",
+  "Luces Cálidas",
+  "María Tyrana",
+  "Mariana Montenegro",
+  "Medio Hermano",
+  "Milton James",
+  "Mitomania",
+  "Nisuyai",
+  "No Tan Humano",
+  "Palacio Verde",
+  "Pancho Gana",
   "Perfectos Extraños",
   "Perrogato",
   "Pieza Oscura",
   "Piscina Recreo",
-  "Planetario",
-  "Prehistöricos",
   "Problemas en Paris",
-  "Protistas",
-  "Pulmón",
-  "Ratarro y los Roedores",
-  "Rock N Chile",
-  "Rosario Alfonso",
+  "Rompeola",
+  "Rucitama",
   "Rubor Cassata",
   "ruido nominal",
   "Salares",
   "siempre perdida",
-  "Siniestra Pandora",
-  "Silabario",
-  "Super Especial",
   "Supertriste",
-  "Taller Dejao",
-  "Teoría de Maicol", # Pop alternativo
+  "Teoría de Maicol",
+  "Trasatlántica",
   "Tres Agujas",
   "Tus amigos imaginarios",
-  "Tus amigos nuevos",
   "Violentistas de Siempre",
   "Voy y Vuelvo",
-  "Yaney",
-  "99 Payasos" # Pop punk
+  "Yaney"
 )
 ```
 
 ## Crear corpus
 
-```{r}
-
-crearCorpusDeBandas <- function(lista_bandas) {
-  # Inicializar un dataframe vacío
-  corpus_data <- data.frame(
-    track_id = integer(),
-    name = character(),
-    name_lower = character(),
-    artist_name = character(),
-    artist_name_lower = character(),
-    album_name = character(),
-    album_name_lower = character(),
-    duration = double(),
-    updated_at = character(),
-    lyrics_id = integer(),
-    plain_lyrics = character(),
-    synced_lyrics = character(),
-    has_plain_lyrics = integer(),
-    has_synced_lyrics = integer(),
-    instrumental = integer(),
-    stringsAsFactors = FALSE
-  )
-  
-  # Recorrer la lista de bandas
-  for (artista in lista_bandas) {
-    # cat("\nProcesando artista:", artista, "\n")  # Log de progreso
-    
-    # Obtener canciones del artista
-    df_artista <- buscarPorArtista(artista)
-    
-    if (is.null(df_artista) || nrow(df_artista) == 0) {
-      cat("No se encontraron datos para el artista:", artista, "\n")
-      next
-    }
-    
-    # cat("Se encontraron", nrow(df_artista), "canciones para el artista:", artista, "\n")
-    
-    # Limpiar duplicados
-    df_artista <- limpiarDuplicadosU(df_artista)
-    # cat("Canciones únicas después de limpiar duplicados:", nrow(df_artista), "\n")
-    
-    # Añadir al corpus
-    corpus_data <- bind_rows(corpus_data, df_artista %>%
-                               select(
-                                 track_id, 
-                                 name, 
-                                 name_lower, 
-                                 artist_name, 
-                                 artist_name_lower, 
-                                 album_name, 
-                                 album_name_lower, 
-                                 duration, 
-                                 updated_at, 
-                                 lyrics_id, 
-                                 plain_lyrics, 
-                                 synced_lyrics, 
-                                 has_plain_lyrics, 
-                                 has_synced_lyrics, 
-                                 instrumental
-                               ))
-  }
-  
-  return(corpus_data)
-}
-
+```{r, include=FALSE}
 # Crear el corpus con todas las bandas
-corpus_df <- crearCorpusDeBandas(bandas_indie)
+corpus_df <- crear_corpus_de_bandas(bandas_indie)
 
 # Mostrar las primeras filas del dataframe resultante
-#head(corpus_df)
+# head(corpus_df)
+
+# Revisar si se actualiza información de bandas que antes no aparecian
+corpus_df_x <- crear_corpus_de_bandas(bandas_no_encontradas)
+
+# Combinar si es necesario
+corpus_df <- rbind(corpus_df, corpus_df_x)
 ```
 
-Obtenemos una muestra de 530 canciones.
+Obtenemos una muestra de 1101 canciones.
+
+```{r}
+# Eliminamos algunas filas específicas que no nos sirven
+corpus_df <- analisisletras::eliminar_por_track_id(
+  corpus_df, c("1054623", "11003377", "1055052",
+               "1055337", "10479847", "13361670",
+               "14229031", "10645318", "12106648",
+               "12989728", "13392416", "12646095",
+               "13616121", "10969397", "13439050",
+               "4058603", "12241956", "12405382",
+               "13026915", "12557417", "10411030",
+               "16415113", "13819028", "11501440"
+               )
+  )
+```
+
+Ahora se reduce a 1078 canciones.
+
+```{r}
+# Adicionalmente podemos eliminar las instrumentales
+corpus_df <- analisisletras::eliminar_instrumentales(corpus_df)
+```
+
+Aquí se redujo a 1061 canciones.
 
 # Exportación de data frames
 
 ### En excel
 
-```{r}
-
-exportar_excel <- function(dataframe, file_path) {
-  # Verificar que el dataframe no esté vacío
-  if (nrow(dataframe) == 0) {
-    stop("El dataframe está vacío y no se puede exportar.")
-  }
-  
-  # Verificar que el paquete writexl esté instalado
-  if (!requireNamespace("writexl", quietly = TRUE)) {
-    stop("El paquete 'writexl' no está instalado. Usa install.packages('writexl') para instalarlo.")
-  }
-  
-  # Exportar el dataframe como archivo Excel
-  writexl::write_xlsx(dataframe, file_path)
-  
-  # Mensaje de confirmación
-  message("El archivo Excel se ha guardado correctamente en: ", file_path)
-}
+```{r, include = FALSE}
 
 # Ejemplo de uso:
-exportar_excel(corpus_df, "corpus_bandas.xlsx")
-```
-
-### En texto
-
-```{r}
-exportar_texto <- function(data, nombre_archivo, separador = "\t", incluir_nombres_filas = FALSE, entrecomillar = FALSE) {
-  # Validar que data sea un data.frame
-  if (!is.data.frame(data)) {
-    stop("El objeto proporcionado no es un data.frame.")
-  }
-  
-  # Exportar el data.frame a un archivo de texto
-  write.table(
-    data,
-    file = nombre_archivo,
-    sep = separador,
-    row.names = incluir_nombres_filas,
-    quote = entrecomillar
-  )
-  
-  # Mensaje de confirmación
-  cat("Archivo exportado exitosamente en:", nombre_archivo, "\n")
-}
-
-# Llamar a la función para exportar tu data.frame
-exportar_texto(
-  data = corpus_df,               # DataFrame a exportar
-  nombre_archivo = "corpus_df_to_text.txt", # Nombre del archivo
-  separador = "\t",                  # Separador de columnas (tabulación)
-  incluir_nombres_filas = TRUE,     # No incluir índices de las filas
-  entrecomillar = FALSE              # No entrecomillar valores
-)
+exportar_excel(corpus_df, "data/corpus_bandas.xlsx")
 ```
 
 # Análisis de datos
 
-Ya que limpiamos nuestra base de datos, si la exportamos la tendremos sin tener que procesar toda la base de datos inicial cada vez que queramos realizar algún análisis. Por ello, la exportamos con la función exportar_excel que definimos al final del documento. Ahora podemos importarlo.
+Ya que limpiamos nuestra base de datos, si la exportamos la tendremos sin tener que procesar toda la base de datos inicial cada vez que queramos realizar algún análisis. Ahora podemos importarlo.
 
 ## Importación de datos
 
-```{r}
-# Función para importar un archivo Excel
-importar_excel <- function(ruta_archivo) {   
-  # Verificar si el archivo existe
-  if (!file.exists(ruta_archivo)) {
-    stop("El archivo no existe en la ruta proporcionada.")
-    }      
-# Leer el archivo Excel 
-  dataframe <- read_excel(ruta_archivo)
-  # Mensaje de confirmación
-  cat("El archivo se ha importado correctamente.\n")
-  # Devolver el dataframe
-  return(dataframe)
-  } 
+```{r, include=FALSE}
+# Importamos el excel que ya guardamos anteriormente
+archivo <- "data/corpus_bandas.xlsx"
+corpus_df <- analisisletras::importar_excel(archivo)
 ```
 
-```{r}
-# Probar la función para importar el archivo
-archivo <- "corpus_bandas.xlsx"  # Cambiar si la ruta o el archivo es otro
-corpus_df <- importar_excel(archivo)
+En el paquete se incluye una función llamada crear_corpus_literario, que recibe como parámetros
 
-# Verificar que se ha importado correctamente
-head(corpus_df)
-```
+-   **dataframe:** Dataframe con las letras o textos.
 
-```{r}
-# Función para quitarle filas NA o con instrumentales
-sinInstrumentales <- function(datos, lyrics_col = "lyrics_id", inst_col = "instrumental"){
-  # all() es para saber si son todos TRUE dentro del paréntesis
-  if (!all(c(lyrics_col, inst_col) %in% colnames(datos))) {
-    stop("La/s columna/s especificada/s no existe/n en el dataset.")
-  }
-  
-  # Filtramos el dataset
-  datos_limpios <- datos %>%
-    filter(!is.na(.data[[lyrics_col]]), .data[[inst_col]] != 1)
-  
-  datos_limpios$instrumental <- NULL
-  
-  return(datos_limpios)
-}
+-   **stopwords_extra:** Vector opcional de palabras adicionales a considerar como stopwords.
 
-# Ej
-sin_instrumentales <- sinInstrumentales(corpus_df)
-```
+Esta función retorna un objeto particular, una lista con 5 componentes:
 
-Se disminuyen de 558 a 548 las observaciones, manteniendo 14 variables, ya que eliminamos la columna que decía si era instrumental o no, que ya no sirve.
+1.  Un corpus de quanteda
+
+2.  Los tokens de quanteda generados a partir del corpus
+
+3.  Un set de stopwords combinadas entre las standard en español y las que se agreguen adhok.
+
+4.  Una matriz de documento-término generada a partir de los tokens
+
+5.  Cálculo de frecuencias
+
+6.  Cálculo de frecuencias de bigramas
+
+7.  Cálculo de frecuencias de trigramas
 
 ```{r}
-# Útiles de quanteda
-corpus_letras <- quanteda::corpus(sin_instrumentales$plain_lyrics)
-#summary(corpus_letras)
-stopwords_adhok <- c("you", "i", "the", "to", "go", "my", "in", "this", "and", "oh", "ah", "ay", "uh")
+# Definimos stop words para nuestro caso
+stopwords_adhok <- c("you", "i", "the", "to", "go", "my", "in", "this", "and", "oh", "ah", "ay", "uh", "oh-oh-oh")
   
-stopwords_adhok <- union(stopwords("es"), stopwords_adhok)
- 
-
-# Tokenización
-tokens_letras <- tokens(corpus_letras, 
-                        remove_punct = TRUE,  # Eliminar puntuación
-                        remove_symbols = TRUE,  # Eliminar símbolos especiales
-                        remove_numbers = TRUE,  # Eliminar números
-                        remove_url = TRUE,  # Eliminar URLs
-                        what = "word"  # Solo tomar palabras
-                        )
+corpus_literario <- crear_corpus_literario(corpus_df, 
+                                              stopwords_extra = stopwords_adhok,
+                                              bigrama_stopwords = TRUE,
+                                              trigrama_stopwords = FALSE
+                                              )
 ```
 
 ## Análisis de frecuencia de términos
 
 ```{r}
-# Crear matriz de documentos término (DTM)
-dtm_letras <- dfm(tokens_letras)
+# Podemos usar ahora esta función para graficar las palabras más utilizadas
+generar_analisis_frecuencias(corpus_literario)
 
-#Eliminamos stopwords 
-dtm_letras <- dfm_remove(dtm_letras, stopwords_adhok)
+# Extraer y ordenar los bigramas y trigramas más frecuentes
+bigramas_mas_frecuentes <- quanteda::topfeatures(corpus_literario$dtm_bigramas, 100)
+trigramas_mas_frecuentes <- quanteda::topfeatures(corpus_literario$dtm_trigramas, 100)
 
-frecuencias <- topfeatures(dtm_letras, n = 100)   # Cambia n para más términos
-# print(frecuencias)
+# Convertir a un dataframe para mayor claridad
+bigramas_df <- data.frame(
+  bigrama = names(bigramas_mas_frecuentes),
+  frecuencia = bigramas_mas_frecuentes,
+  stringsAsFactors = FALSE
+)
 
-frecuencias_totales <- textstat_frequency(dtm_letras)
+trigramas_df <- data.frame(
+  trigrama = names(trigramas_mas_frecuentes),
+  frecuencia = trigramas_mas_frecuentes,
+  stringsAsFactors = FALSE
+)
 
-# Convertir frecuencias en un dataframe
-frecuencias_df <- data.frame(term = names(frecuencias), freq = frecuencias)
-
-# Crear la nube de palabras
-wordcloud(words = frecuencias_df$term, 
-          freq = frecuencias_df$freq, 
-          min.freq = 3,  # Palabras con frecuencia mínima
-          max.words = 200,  # Número máximo de palabras
-          scale = c(3, 0.5),  # Tamaño de las palabras
-          colors = brewer.pal(8, "Dark2"),  # Paleta de colores
-          random.order = FALSE)  # Las palabras más frecuentes en el centro
-
-
+# Imprimir los 100 primeros bigramas y trigramas
+print(bigramas_df)
+print(trigramas_df)
 ```
 
 ## Análisis de bi-gramas
 
-```{r}
-
-# Crear tokens del corpus
-tokens_letras <- tokens(corpus_letras, 
-                        remove_punct = TRUE,  # Eliminar puntuación
-                        remove_symbols = TRUE,  # Eliminar símbolos especiales
-                        remove_numbers = TRUE,  # Eliminar números
-                        remove_url = TRUE,  # Eliminar URLs
-                        what = "word")  # Solo tomar palabras
-
-# Normalizar los tokens
-tokens_normalizados <- lapply(tokens_letras, nrmlztxt)
-
-# Convertir los tokens normalizados en objetos de tipo tokens
-tokens_normalizados <- tokens(tokens_normalizados)
-
-# Eliminar stopwords después de la normalización
-tokens_limpios <- tokens_remove(tokens_normalizados, stopwords_adhok)
-
-# Generar bigramas (combinación de 2 palabras) sin stopwords
-tokens_bigrams <- tokens_ngrams(tokens_limpios, n = 2)
-
-# Crear la matriz de documentos-término (DTM) para los bigramas
-dtm_bigrams <- dfm(tokens_bigrams)
-
-# Calcular la frecuencia de los bigramas
-frecuencia_bigrams <- textstat_frequency(dtm_bigrams)
-
-# Eliminar bigramas con docfreq == 1 (que salen en una sola canción)
-frecuencia_bigrams_filtrada <- frecuencia_bigrams[frecuencia_bigrams$docfreq > 3, ]
-
-# Ver los bigramas filtrados
-print(frecuencia_bigrams_filtrada)
-```
+Lorem ipsum.
 
 ## Buscar bigramas en canciones
 
 ```{r}
-buscar_bigramas <- function(dtm, bigramas, track_ids, canciones, artistas) {
-  # Verificar que las entradas sean correctas
-  if (length(bigramas) == 0) {
-    stop("Por favor, ingresa al menos un bigrama.")
-  }
-  
-  # Crear una lista para almacenar las canciones donde aparecen los bigramas
-  resultados <- list()
-  
-  # Iterar sobre los bigramas
-  for (bigrama in bigramas) {
-    if (bigrama %in% colnames(dtm)) {
-      # Extraer la columna como vector lógico
-      vector_bigrama <- as.vector(dtm[, bigrama])
-      
-      # Encontrar las filas donde aparece el bigrama
-      indices <- which(vector_bigrama > 0)
-      
-      # Guardamos las canciones y artistas correspondientes
-      resultados[[bigrama]] <- data.frame(
-        track_id = track_ids[indices],
-        cancion = canciones[indices],
-        artista = artistas[indices]
-      )
-    } else {
-      # Si el bigrama no está en la DTM, agregar un mensaje
-      resultados[[bigrama]] <- "El bigrama no está presente en el corpus."
-    }
-  }
-  
-  return(resultados)
-}
 
-# Ejemplo de uso
-# Bigramas que deseas buscar
-bigramas_buscar <- frecuencia_bigrams_filtrada$feature
+canciones_con_bigramas <- buscar_ngramas(corpus_literario,
+                                         2,
+                                         c("tan_bien", "tan_mal")
+                                         )
 
-# Buscar los bigramas
-canciones_con_bigramas <- buscar_bigramas(dtm_bigrams, bigramas_buscar, sin_instrumentales$track_id, sin_instrumentales$name, sin_instrumentales$artist_name)
-
-# Ver resultados
-# print(canciones_con_bigramas)
+canciones_con_trigramas <- buscar_ngramas(corpus_literario,
+                                          3,
+                                          c("tú_y_yo", "te_voy_a")
+                                          )
 ```
 
-Por ejemplo,
-
-```         
-> canciones_con_bigramas[["voy_corriendo"]]
-
-  track_id            cancion                           artista
-  
-1 13533874       La Velocidad                          Adelaida
-2 14169858             BRONCE                    Déjenme Dormir
-3 14869187          EN TU VOZ                    Déjenme Dormir
-4 13672981  Baltazar Josefina                     Floresalegría
-5 11599161           Tormenta  Los Animales También Se Suicidan
-6  3161193       Las Palmeras                   Niños Del Cerro
-7 12503286        Gallo verde                     Rock n' chile
-```
-
-Ahora podemos ir a buscar en las canciones las letras que llevan estos bigramas que nos interesan, para el análisis literario, por ejemplo.
+Ahora podemos ir a buscar en las canciones las letras que llevan estos bigramas o trigramas que nos interesan, para el análisis literario, por ejemplo.
 
 ## Análisis de sentimientos
 
-Para realizar análisis de sentimientos, lo más efectivo de momento parece ser exportar algunos datos de un data frame `sin_instrumentales`, como su `track_id` y sus `plain_lyrics` . Esto se lleva a un link de Google Colab escrito para realizar análisis de sentimientos y poder importar posteriormente esos datos en un data frame de vuelta a este documento. Partimos por eliminar datos sin letras o que su letra es "(instrumental)", "instrumental" o similares. Luego exportaremos el data frame hacia el jupiternotebook en colab.
+Para realizar análisis de sentimientos, lo más efectivo de momento parece ser exportar el dataframe corpus_df. Esto se lleva a un link de Google Colab escrito para realizar análisis de sentimientos y poder importar posteriormente esos datos en un dataframe de vuelta a este documento. Importa el archivo corpus_bandas.xlsx en Colab. Luego, descarga en el Colab al final de todo el procesamiento (Puede tomar unos 40 minutos con unas 1000 filas de datos) descarga el archivo df_emociones.xlsx.
 
 [Jupiternotebook en Google Colab para realizar el análisis de sentimientos](https://colab.research.google.com/drive/1IMMNaCr-_hodOii7Fj98ZUZeMIJDULTI)
 
 ```{r}
-# Exportamos sin instrumentales, eliminando antes posibles "datos NA colados" en el data_frame.
-
-revisar_eliminar_instrumentales <- function(df, umbral_instrumental = 20) {
-  # Verificamos si las columnas requeridas existen
-  if (!("plain_lyrics" %in% names(df)) || !("track_id" %in% names(df))) {
-    stop("El dataframe debe contener las columnas 'plain_lyrics' y 'track_id'.")
-  }
-  
-  # Iteramos en orden inverso para evitar problemas al eliminar filas
-  for (i in seq(nrow(df), 1)) {
-    # Obtenemos el largo del texto en plain_lyrics
-    lyric_length <- nchar(df$plain_lyrics[i])
-    
-    if (lyric_length < umbral_instrumental) {
-      # Imprimimos los valores
-      message("Eliminando fila con track_id: ", df$track_id[i], 
-              ", plain_lyrics: '", df$plain_lyrics[i], "' (longitud: ", lyric_length, ")")
-      
-      # Eliminamos la fila del dataframe
-      df <- df[-i, ]
-    }
-  }
-  
-  # Devolvemos el dataframe actualizado
-  return(df)
-}
-
-# Aplicar la función
-sin_instrumentales <- revisar_eliminar_instrumentales(sin_instrumentales)
-```
-
-#### Exportar para enviar a Google Colab
-
-```{r}
-
-# Primero vamos a filtrar las columnas que nos interesan
-df_a_exportar <- sin_instrumentales[,c("track_id", "plain_lyrics")]
-
-exportar_excel(df_a_exportar, "importar_en_colab.xlsx")
-```
-
-#### Volver a importar el data frame obtenido del jupiter notebook
-
-```{r}
-df_emociones <- importar_excel("df_emociones.xlsx")
+# Importamos el excel que ya procesamos anteriormente en Colab
+df_emociones <- importar_excel("data/df_emociones.xlsx")
 
 # Ver las primeras filas
-head(df_emociones)
+# head(df_emociones)
 
-# Seleccionar las columnas de la 3 a la 11 de df_emociones
-df_emociones_subset <- df_emociones[, 3:11]
-
-# Usar cbind para combinar sin_instrumentales con el subset de df_emociones
-df_combinado <- cbind(sin_instrumentales, df_emociones_subset)
-
-# Ver el DataFrame combinado
-# head(df_combinado)
-
-# Calcular estadísticas básicas
-estadisticas <- df_combinado %>%
-  select(anger, disgust, fear, joy, neutral, sadness, surprise) %>%
-  summarise(
-    across(
-      everything(),
-      list(
-        # Media = ~mean(.x, na.rm = TRUE)
-        # Mediana = ~median(.x, na.rm = TRUE)
-        # Min = ~min(.x, na.rm = TRUE)
-        # Max = ~max(.x, na.rm = TRUE),
-        # Desviacion = ~sd(.x, na.rm = TRUE)
-      )
-    )
-  )
-
-print(estadisticas)
+# Ahora podemos aplicar la función filtrar_emociones
+# Para obtener un dataframe con las canciones que tengan 51 o más
+# De porcentaje para alguna emoción (excluimos la emoción "neutral")
+df_emociones_fuertes <- filtrar_emociones(df_emociones, 
+                                          porc_min = 51, 
+                                          incluir_neutral = FALSE)
 ```
 
-Ahora tenemos un dataframe con 349 canciones y 23 variables, incluyendo un json con las emociones asociadas a las estrofas de las canciones, así como un promedio de las emociones para las canciones completas. Debemos terminar de ajustar los objetos json de la columna df_combinado.
+Ahora tenemos un dataframe con 1061 canciones y 24 variables, incluyendo un json con las emociones asociadas a las estrofas de las canciones, así como un promedio de las emociones para las canciones completas. Se agregan columnas emociones_predom y porc_emociones_predom, para mostrar la cualidad y cantidad de emoción predominante en la letra.
 
-Se creó también una lista de spotify con las 20 primeras canciones de cada emoción [aquí.](https://open.spotify.com/playlist/4fBoykAd76rcsgaRyOtZKz)
-
-```{r}
-
-# Función para pasar de char a json
-```
-
-## Análisis de complejidad textual
+Se creó también una lista de spotify con las canciones [aquí.](https://open.spotify.com/playlist/4fBoykAd76rcsgaRyOtZKz)
 
 ## Reconocimiento de patrones gramaticales
 
@@ -815,7 +528,5 @@ En las canciones, a diferencia de casos como las novelas o las noticias, el aná
 -   Lenguaje poético puede no ser tan facilmente entendible para los algoritmos de sentimiento. Hay que buscar uno que funciones bien en español.
 
 -   Dialecto en el indie chileno puede afectar el análisis de sentimiento.
-
--   Resolver el problema de que el corpus para cada canción pueda ser muy pequeño, tal vez se tendran que hacer agrupamientos de canciones por album o por artista,
 
 -   La música tiene un elemento emocional o performativo que no puede captarse solo a través del texto. Por lo que habría que complementar con datos que se puedan sacar de apis como la de spotify o Essentia.
