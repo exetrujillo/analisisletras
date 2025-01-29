@@ -79,7 +79,7 @@ generar_analisis_frecuencias <- function(corpus_literario, stopwords_extra = NUL
   frecuencias_trigramas <- frecuencias_trigramas %>%
     dplyr::arrange(desc(docfreq))
 
-  # 5. Grafico de los 20 bigramas mas frecuentes
+  # 5. Grafico de los 20 bigramas mas frecuentes basado en doqfreq
   top_20_frecuencias_bigramas <- frecuencias_bigramas[1:20, ]
   plot_4 <- ggplot2::ggplot(top_20_frecuencias_bigramas,
                             ggplot2::aes(x = reorder(feature, -frequency), y = frequency)) +
@@ -90,7 +90,7 @@ generar_analisis_frecuencias <- function(corpus_literario, stopwords_extra = NUL
 
   print(plot_4)  # Asegurarse de que el grafico se muestre
 
-  # 6. Grafico de los 20 trigramas mas frecuentes
+  # 6. Grafico de los 20 trigramas mas frecuentes basado en doqfreq
   top_20_frecuencias_trigramas <- frecuencias_trigramas[1:20, ]
   plot_5 <- ggplot2::ggplot(top_20_frecuencias_trigramas,
                             ggplot2::aes(x = reorder(feature, -frequency), y = frequency)) +

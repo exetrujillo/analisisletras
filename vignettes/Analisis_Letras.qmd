@@ -50,7 +50,7 @@ analisisletras::desconectar_bd(conn)
 El resultado son las siguientes tablas:
 
 |  |  |  |  |  |  |
-|----|----|----|----|----|----|
+|------------|------------|------------|------------|------------|------------|
 | "\_litestream_lock" | "\_litestream_seq" | "flags" | "lyrics" | "missing_tracks" | "sqlite_sequence" |
 | "tracks" | "tracks_fts" | "tracks_fts_config" | "tracks_fts_data" | "tracks_fts_docsize" | "tracks_fts_idx" |
 
@@ -89,7 +89,7 @@ Nos interesa particularmente la tabla tracks y la tabla lyrics, la tabla tracks_
 ### Tracks
 
 | Columna | Tipo | Descripción | Ejemplo |
-|----|----|----|----|
+|------------------|------------------|------------------|------------------|
 | `id` | INT | Clave primaria de la tabla. Usada para identificar de manera única cada canción o pista. | 3 |
 | `name` | TEXT | Nombre de la canción o pista. Es sensible a mayúsculas y minúsculas. | Wildest Dreams |
 | `name_lower` | TEXT | Versión en minúsculas del nombre de la pista (`name`). | wildest dreams |
@@ -105,7 +105,7 @@ Nos interesa particularmente la tabla tracks y la tabla lyrics, la tabla tracks_
 ### Lyrics
 
 | Columna | Tipo | Descripción | Ejemplo |
-|----|----|----|----|
+|------------------|------------------|------------------|------------------|
 | `id` | INT | Clave primaria de la tabla, única para cada registro de letras. | 3 |
 | `plain_lyrics` | TEXT | Letras de la canción en formato simple (sin sincronización con la música). | Not tryna be indie\\nNot tryna be cool\\nJust tryna be in this\\nTell me, are you too?\\n\\nCan \[...\] |
 | `synced_lyrics` | TEXT | Letras sincronizadas, con marcas de tiempo para seguir la canción mientras se reproduce. | \[00:09.66\] Not tryna be indie\\n\[00:12.30\] Not tryna be cool\\n\[00:14.99\] Just tryna be in \[...\] |
@@ -158,7 +158,7 @@ Arroja 51 filas con 15 variables: **track_id** (\<int\>), **name** (\<chr\>), **
 Supongamos que tenemos un pequeño subconjunto de datos:
 
 | name_lower | artist_name_lower | has_synced_lyrics | updated_at | has_plain_lyrics |
-|----|----|----|----|----|
+|---------------|---------------|---------------|---------------|---------------|
 | doce | asia menor | 0 | 2023-01-01 12:00:00 | 1 |
 | doce | asia menor | 1 | 2023-01-02 12:00:00 | 1 |
 | doce | asia menor | 1 | 2022-12-31 12:00:00 | 1 |
@@ -412,19 +412,25 @@ En el paquete se incluye una función llamada crear_corpus_literario, que recibe
 
 Esta función retorna un objeto particular, una lista con 5 componentes:
 
-1.  Un corpus de quanteda
+1.  El data frame original, el parámetro inicial sin la columna instrumental
 
-2.  Los tokens de quanteda generados a partir del corpus
+2.  Un corpus de quanteda
 
-3.  Un set de stopwords combinadas entre las standard en español y las que se agreguen adhok.
+3.  Los tokens de quanteda generados a partir del corpus
 
-4.  Una matriz de documento-término generada a partir de los tokens
+4.  Un set de stopwords combinadas entre las standard en español y las que se agreguen adhok.
 
-5.  Cálculo de frecuencias
+5.  Una matriz de documento-término generada a partir de los tokens
 
-6.  Cálculo de frecuencias de bigramas
+6.  Una matriz de documento-término generada a partir de los tokens de bigramas
 
-7.  Cálculo de frecuencias de trigramas
+7.  Una matriz de documento-término generada a partir de los tokens de trigramas
+
+8.  Cálculo de frecuencias
+
+9.  Cálculo de frecuencias de bigramas
+
+10. Cálculo de frecuencias de trigramas
 
 ```{r}
 # Definimos stop words para nuestro caso
@@ -433,7 +439,7 @@ stopwords_adhok <- c("you", "i", "the", "to", "go", "my", "in", "this", "and", "
 corpus_literario <- crear_corpus_literario(corpus_df, 
                                               stopwords_extra = stopwords_adhok,
                                               bigrama_stopwords = TRUE,
-                                              trigrama_stopwords = FALSE
+                                              trigrama_stopwords = TRUE
                                               )
 ```
 
@@ -472,6 +478,7 @@ Lorem ipsum.
 ## Buscar bigramas en canciones
 
 ```{r}
+
 
 canciones_con_bigramas <- buscar_ngramas(corpus_literario,
                                          2,
